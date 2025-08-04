@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收入规划分析工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .app-description {
+            color: #7f8c8d;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .app-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .section-title {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .input-hint {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+        }
+
+        .card-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .chart-container {
+            height: 400px;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: right;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        tr:hover {
+            background-color: #f5f7fa;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .positive {
+            color: #27ae60;
+        }
+
+        .negative {
+            color: #e74c3c;
+        }
+
+        .neutral {
+            color: #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>收入规划分析工具</h1>
+            <p class="app-description">输入您的财务信息，预测未来资产变化趋势，帮助您制定更好的财务规划</p>
+        </header>
+
+        <div class="app-layout">
+            <section class="input-section">
+                <h2 class="section-title">财务信息输入</h2>
+                <form id="planningForm">
+                    <div class="form-group">
+                        <label for="initialAsset">初始资产金额 (¥)</label>
+                        <input type="number" id="initialAsset" min="0" step="1000" value="100000">
+                        <div class="input-hint">您当前拥有的资产总额</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="annualIncome">年收入 (¥)</label>
+                        <input type="number" id="annualIncome" min="0" step="1000" value="120000">
+                        <div class="input-hint">第一年的总收入</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="annualExpense">年消费 (¥)</label>
+                        <input type="number" id="annualExpense" min="0" step="1000" value="80000">
+                        <div class="input-hint">第一年的总支出</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="investmentReturn">投资年化回报率 (%)</label>
+                        <input type="number" id="investmentReturn" min="0" max="100" step="0.1" value="5">
+                        <div class="input-hint">投资的年化收益率</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="planningYears">规划年数</label>
+                        <input type="number" id="planningYears" min="1" max="50" value="20">
+                        <div class="input-hint">计划预测的年数</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="incomeGrowth">年收入增长率 (%)</label>
+                        <input type="number" id="incomeGrowth" min="0" max="100" step="0.1" value="3">
+                        <div class="input-hint">每年收入的增长率</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expenseGrowth">年消费增长率 (%)</label>
+                        <input type="number" id="expenseGrowth" min="0" max="100" step="0.1" value="2">
+                        <div class="input-hint">每年消费的增长率</div>
+                    </div>
+
+                    <button type="submit">计算资产规划</button>
+                </form>
+            </section>
+
+            <section class="results-section">
+                <h2 class="section-title">分析结果</h2>
+                
+                <div class="summary-cards">
+                    <div class="card">
+                        <div class="card-title">初始资产</div>
+                        <div class="card-value" id="summaryInitialAsset">¥100,000</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">首年净收入</div>
+                        <div class="card-value positive" id="summaryFirstNetIncome">¥40,000</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">最终资产</div>
+                        <div class="card-value neutral" id="summaryFinalAsset">¥1,234,567</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">资产增长倍数</div>
+                        <div class="card-value" id="summaryGrowthMultiplier">12.3x</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="assetChart"></canvas>
+                </div>
+
+                <h3 class="section-title">年度详细数据</h3>
+                <div class="table-container">
+                    <table id="detailsTable">
+                        <thead>
+                            <tr>
+                                <th class="text-left">年份</th>
+                                <th>年初资产</th>
+                                <th>年收入</th>
+                                <th>年消费</th>
+                                <th>投资收益</th>
+                                <th>年末资产</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- 数据将通过JavaScript动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let chart = null;
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化图表
+            initChart();
+            
+            // 绑定表单提交事件
+            document.getElementById('planningForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                calculateAndDisplay();
+            });
+            
+            // 初始计算
+            calculateAndDisplay();
+        });
+
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('assetChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: '年末资产',
+                            data: [],
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: '年收入',
+                            data: [],
+                            borderColor: '#27ae60',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.3
+                        },
+                        {
+                            label: '年消费',
+                            data: [],
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ¥' + formatNumber(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '年份'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '金额 (¥)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '¥' + formatNumber(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 计算并显示结果
+        function calculateAndDisplay() {
+            // 获取输入值
+            const initialAsset = parseFloat(document.getElementById('initialAsset').value) || 0;
+            const annualIncome = parseFloat(document.getElementById('annualIncome').value) || 0;
+            const annualExpense = parseFloat(document.getElementById('annualExpense').value) || 0;
+            const investmentReturn = parseFloat(document.getElementById('investmentReturn').value) || 0;
+            const planningYears = parseInt(document.getElementById('planningYears').value) || 1;
+            const incomeGrowth = parseFloat(document.getElementById('incomeGrowth').value) || 0;
+            const expenseGrowth = parseFloat(document.getElementById('expenseGrowth').value) || 0;
+            
+            // 计算数据
+            const results = calculateAssetGrowth(
+                initialAsset,
+                annualIncome,
+                annualExpense,
+                investmentReturn / 100,
+                planningYears,
+                incomeGrowth / 100,
+                expenseGrowth / 100
+            );
+            
+            // 更新摘要信息
+            updateSummary(results, initialAsset, annualIncome, annualExpense);
+            
+            // 更新图表
+            updateChart(results);
+            
+            // 更新表格
+            updateTable(results);
+        }
+
+        // 资产增长计算核心函数
+        function calculateAssetGrowth(
+            initialAsset,
+            annualIncome,
+            annualExpense,
+            investmentReturn,
+            planningYears,
+            incomeGrowth,
+            expenseGrowth
+        ) {
+            const results = [];
+            let currentAsset = initialAsset;
+            
+            for (let year = 1; year <= planningYears; year++) {
+                // 计算当前年份的收入和支出
+                const income = annualIncome * Math.pow(1 + incomeGrowth, year - 1);
+                const expense = annualExpense * Math.pow(1 + expenseGrowth, year - 1);
+                
+                // 计算投资收益
+                const investmentGain = currentAsset * investmentReturn;
+                
+                // 计算年末资产
+                const endAsset = currentAsset + income - expense + investmentGain;
+                
+                results.push({
+                    year: year,
+                    startAsset: currentAsset,
+                    income: income,
+                    expense: expense,
+                    investmentGain: investmentGain,
+                    endAsset: endAsset
+                });
+                
+                currentAsset = endAsset;
+            }
+            
+            return results;
+        }
+
+        // 更新摘要信息
+        function updateSummary(results, initialAsset, annualIncome, annualExpense) {
+            if (results.length === 0) return;
+            
+            const firstNetIncome = annualIncome - annualExpense;
+            const finalAsset = results[results.length - 1].endAsset;
+            const growthMultiplier = finalAsset / initialAsset;
+            
+            document.getElementById('summaryInitialAsset').textContent = '¥' + formatNumber(initialAsset);
+            document.getElementById('summaryFirstNetIncome').textContent = '¥' + formatNumber(firstNetIncome);
+            document.getElementById('summaryFinalAsset').textContent = '¥' + formatNumber(finalAsset);
+            document.getElementById('summaryGrowthMultiplier').textContent = growthMultiplier.toFixed(1) + 'x';
+        }
+
+        // 更新图表
+        function updateChart(results) {
+            if (!chart) return;
+            
+            const labels = results.map(item => `第${item.year}年`);
+            const endAssets = results.map(item => item.endAsset);
+            const incomes = results.map(item => item.income);
+            const expenses = results.map(item => item.expense);
+            
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = endAssets;
+            chart.data.datasets[1].data = incomes;
+            chart.data.datasets[2].data = expenses;
+            
+            chart.update();
+        }
+
+        // 更新表格
+        function updateTable(results) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            results.forEach(item => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td class="text-left">第${item.year}年</td>
+                    <td>¥${formatNumber(item.startAsset)}</td>
+                    <td class="positive">¥${formatNumber(item.income)}</td>
+                    <td class="negative">¥${formatNumber(item.expense)}</td>
+                    <td class="neutral">¥${formatNumber(item.investmentGain)}</td>
+                    <td>¥${formatNumber(item.endAsset)}</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // 格式化数字显示
+        function formatNumber(num) {
+            return Math.abs(num) >= 1000000 
+                ? (num / 1000000).toFixed(2) + 'M' 
+                : Math.abs(num) >= 1000 
+                    ? (num / 1000).toFixed(1) + 'K' 
+                    : Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+    </script>
+</body>
+</html>
