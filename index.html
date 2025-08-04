@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>收入规划分析工具</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -276,6 +277,22 @@
             width: auto;
             margin-right: 10px;
         }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .export-button {
+            flex: 1;
+            background: #9b59b6;
+            padding: 10px;
+        }
+
+        .export-button:hover {
+            background: #8e44ad;
+        }
     </style>
 </head>
 <body>
@@ -469,6 +486,12 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- 导出按钮 -->
+                <div class="export-buttons">
+                    <button class="export-button" id="exportCSV">导出为CSV</button>
+                    <button class="export-button" id="exportExcel">导出为Excel</button>
+                </div>
             </section>
         </div>
     </div>
@@ -477,6 +500,7 @@
         // 全局变量
         let assetChart = null;
         let ratioChart = null;
+        let calculationResults = []; // 保存计算结果用于导出
 
         // 页面加载完成后初始化
         document.addEventListener('DOMContentLoaded', function() {
@@ -498,6 +522,10 @@
             document.getElementById('addExpense').addEventListener('click', function() {
                 addExpenseItem();
             });
+            
+            // 绑定导出按钮事件
+            document.getElementById('exportCSV').addEventListener('click', exportToCSV);
+            document.getElementById('exportExcel').addEventListener('click', exportToExcel);
             
             // 初始计算
             calculateAndDisplay();
@@ -806,7 +834,7 @@
             });
             
             // 计算数据
-            const results = calculateAssetGrowth(
+            calculationResults = calculateAssetGrowth(
                 initialAsset,
                 incomeConfig,
                 expenses,
@@ -815,13 +843,13 @@
             );
             
             // 更新摘要信息
-            updateSummary(results, initialAsset, incomeConfig, expenses);
+            updateSummary(calculationResults, initialAsset, incomeConfig, expenses);
             
             // 更新图表
-            updateCharts(results);
+            updateCharts(calculationResults);
             
             // 更新表格
-            updateTable(results);
+            updateTable(calculationResults);
         }
 
         // 计算收入
@@ -1011,6 +1039,81 @@
                 : Math.abs(num) >= 1000 
                     ? (num / 1000).toFixed(1) + 'K' 
                     : Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // 导出为CSV格式
+        function exportToCSV() {
+            if (calculationResults.length === 0) {
+                alert('没有数据可导出，请先进行计算');
+                return;
+            }
+
+            // 创建CSV内容
+            let csvContent = '\uFEFF'; // 添加BOM以支持中文
+            csvContent += '年份,年初资产,年收入,年消费,投资收益,年末资产,消费/收入比,资产/收入比\n';
+            
+            calculationResults.forEach(item => {
+                csvContent += `${item.year},${item.startAsset},${item.income},${item.expense},${item.investmentGain},${item.endAsset},${(item.expenseIncomeRatio * 100).toFixed(2)}%,${item.assetIncomeRatio.toFixed(2)}x\n`;
+            });
+            
+            // 创建下载链接
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', '财务规划数据.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 导出为Excel格式
+        function exportToExcel() {
+            if (calculationResults.length === 0) {
+                alert('没有数据可导出，请先进行计算');
+                return;
+            }
+
+            // 准备数据
+            const ws_data = [
+                ['年份', '年初资产', '年收入', '年消费', '投资收益', '年末资产', '消费/收入比', '资产/收入比']
+            ];
+            
+            calculationResults.forEach(item => {
+                ws_data.push([
+                    item.year,
+                    item.startAsset,
+                    item.income,
+                    item.expense,
+                    item.investmentGain,
+                    item.endAsset,
+                    (item.expenseIncomeRatio * 100).toFixed(2) + '%',
+                    item.assetIncomeRatio.toFixed(2) + 'x'
+                ]);
+            });
+            
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            
+            // 设置列宽
+            ws['!cols'] = [
+                { wch: 10 }, // 年份
+                { wch: 15 }, // 年初资产
+                { wch: 15 }, // 年收入
+                { wch: 15 }, // 年消费
+                { wch: 15 }, // 投资收益
+                { wch: 15 }, // 年末资产
+                { wch: 15 }, // 消费/收入比
+                { wch: 15 }  // 资产/收入比
+            ];
+            
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '财务规划数据');
+            
+            // 导出文件
+            XLSX.writeFile(wb, '财务规划数据.xlsx');
         }
     </script>
 </body>
